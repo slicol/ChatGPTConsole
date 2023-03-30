@@ -1,16 +1,13 @@
 from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
     QPushButton,
     QLineEdit,
     QTextEdit,
     QVBoxLayout,
     QHBoxLayout,
-    QDialog,
     QLabel,
 )
-from PyQt5.QtGui import QTextCursor
-from PyQt5 import QtCore, QtGui, QtWidgets
+import threading
+from PyQt5 import QtWidgets
 from ChatGPTConsole import ChatAPI, ChatContext
 import os
 from datetime import datetime
@@ -63,9 +60,9 @@ class ChatWindow(QtWidgets.QWidget):
         self.input_box = QLineEdit()
         hbox.addWidget(self.input_box)
 
-        send_button = QPushButton("Send")
-        send_button.clicked.connect(self.on_send_button_clicked)
-        hbox.addWidget(send_button)
+        self.send_button = QPushButton("Send")
+        self.send_button.clicked.connect(self.on_send_button_clicked)
+        hbox.addWidget(self.send_button)
 
         vbox.addLayout(hbox)
 
@@ -76,16 +73,21 @@ class ChatWindow(QtWidgets.QWidget):
         self.setLayout(vbox)
 
     def on_send_button_clicked(self):
+        self.send_button.setEnabled(False)  # 置为不可用
         msg = self.input_box.text()
-        rspmsg = ChatAPI(msg)
-        self.msg_list.append(msg)
-        self.msg_list.append(rspmsg)
         self.chat_box.append("You: {}".format(msg))
+        threading.Thread(target=self.handle_message, args=(msg,)).start()
+
+    def handle_message(self, msg):
+        # 在后台线程中调用 ChatAPI 处理用户输入的消息
+        rspmsg = ChatAPI(msg)
         self.chat_box.append("ChatBot: {}".format(rspmsg))
         self.chat_box.append("---")
-        self.chat_box.moveCursor(QTextCursor.End)
-
         self.input_box.setText("")
+        self.chat_box.verticalScrollBar().setValue(
+            self.chat_box.verticalScrollBar().maximum()
+        )  # 滚动到底部
+        self.send_button.setEnabled(True)  # 置为可用
 
 
 def init():
