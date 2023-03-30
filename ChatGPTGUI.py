@@ -1,3 +1,15 @@
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QPushButton,
+    QLineEdit,
+    QTextEdit,
+    QVBoxLayout,
+    QHBoxLayout,
+    QDialog,
+    QLabel,
+)
+from PyQt5.QtGui import QTextCursor
 from PyQt5 import QtCore, QtGui, QtWidgets
 from ChatGPTConsole import ChatAPI, ChatContext
 import os
@@ -5,6 +17,7 @@ from datetime import datetime
 import Misc.MTFileUtils as MTFileUtils
 from Misc.MTConfigIni import GMTConfig
 import openai
+
 
 class NameDialog(QtWidgets.QDialog):
     def __init__(self):
@@ -35,28 +48,44 @@ class NameDialog(QtWidgets.QDialog):
 class ChatWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Chat Room")
-        self.setFixedSize(400, 600)
+        self.setWindowTitle("Chat Box")
+        self.resize(800, 600)
+        # self.username = name
+        self.msg_list = []
 
-        layout = QtWidgets.QVBoxLayout()
-        name_label = QtWidgets.QLabel("Welcome, {}!".format(ChatContext.username))
-        self.chat_box = QtWidgets.QTextEdit()
-        self.msg_input = QtWidgets.QLineEdit()
-        self.send_button = QtWidgets.QPushButton("Send")
-        self.send_button.clicked.connect(self.send_msg)
+        vbox = QVBoxLayout()
 
-        layout.addWidget(name_label)
-        layout.addWidget(self.chat_box)
-        layout.addWidget(self.msg_input)
-        layout.addWidget(self.send_button)
+        label = QLabel("Welcome, {}".format(ChatContext.username))
+        vbox.addWidget(label)
 
-        self.setLayout(layout)
+        hbox = QHBoxLayout()
 
-    def send_msg(self):
-        msg = self.msg_input.text()
+        self.input_box = QLineEdit()
+        hbox.addWidget(self.input_box)
+
+        send_button = QPushButton("Send")
+        send_button.clicked.connect(self.on_send_button_clicked)
+        hbox.addWidget(send_button)
+
+        vbox.addLayout(hbox)
+
+        self.chat_box = QTextEdit()
+        self.chat_box.setReadOnly(True)
+        vbox.addWidget(self.chat_box)
+
+        self.setLayout(vbox)
+
+    def on_send_button_clicked(self):
+        msg = self.input_box.text()
         rspmsg = ChatAPI(msg)
-        self.chat_box.append(rspmsg)
-        self.msg_input.setText("")
+        self.msg_list.append(msg)
+        self.msg_list.append(rspmsg)
+        self.chat_box.append("You: {}".format(msg))
+        self.chat_box.append("ChatBot: {}".format(rspmsg))
+        self.chat_box.append("---")
+        self.chat_box.moveCursor(QTextCursor.End)
+
+        self.input_box.setText("")
 
 
 def init():
@@ -89,8 +118,8 @@ def init():
 
 
 if __name__ == "__main__":
-    
     import sys
+
     init()
     app = QtWidgets.QApplication(sys.argv)
 
