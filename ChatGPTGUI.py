@@ -47,7 +47,6 @@ class ChatWindow(QtWidgets.QWidget):
         super().__init__()
         self.setWindowTitle("Chat Box")
         self.resize(800, 600)
-        # self.username = name
         self.msg_list = []
 
         vbox = QVBoxLayout()
