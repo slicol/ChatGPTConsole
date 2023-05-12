@@ -1,0 +1,10 @@
+﻿可以通过检测浏览器的user agent来判断页面是否在微信里打开。以下是一个判断函数：
+
+```javascript
+function isWeixinBrowser() {
+  var ua = navigator.userAgent.toLowerCase();
+  return ua.indexOf('micromessenger') !== -1;
+}
+```
+<aaaa><br><hr>
+该函数返回true代表页面在微信里打开，返回false代表非微信浏览器。

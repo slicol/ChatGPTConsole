@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bunny GPT</title>
+    <script src="https://unpkg.com/vue@next"></script>
+    <style>
+        #input-container {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        #input-text {
+            width: 100%;
+            height: 100px;
+            box-sizing: border-box;
+            padding: 5px;
+            resize: none;
+            font-size: 32px;
+        }    
+
+        #button-yousay {
+            width: 100%;
+            height: 100px;
+            box-sizing: border-box;
+            padding: 5px;
+            font-size: 48px;
+        }
+
+        #display-container {
+            width: 100%;
+            height: calc(100vh - 240px);
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 32px;
+            word-wrap: break-word;
+        }
+
+        #display-container div {
+            display: inline-block;
+            word-wrap: break-word;
+        }
+
+        #display-container-inner {
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="display-container" ref="scrollContainer">
+            <div id="display-container-inner" v-html="displayText"></div>
+        </div>    
+        <hr>
+        <div id="input-container">
+            <textarea id="input-text" v-model="inputText"></textarea>
+            <button id="button-yousay" v-on:click="OnBtnYouSay">{{buttonText}}</button>
+        </div>
+    </div>
+    <script>
+
+        class ChatContext
+        {
+            constructor()
+            {
+                //this.host = 'https://43.153.103.81:443';
+                //this.host = 'https://127.0.0.1:4540';
+                this.host = 'https://dorian-tang.com';
+                this.webapi = this.host + '/yousay_webapi';
+                this.session = '';
+                this.username = 'web';
+                this.timeout = 60;
+            }
+        }
+
+        class BotMessage
+        {
+            constructor(rspdata)
+            {
+                this.key = rspdata['key'];
+                this.role = rspdata['role'];
+                this.content = rspdata['content'];
+                this.content = decodeURIComponent(atob(this.content));
+            }
+        }
+
+
+        var EAppState = {
+            INPUT_NAME:'Please Input Your Name ↑ ',
+            YOU_SAY:'You Say',
+            WAITING_GPT: 'Waiting GPT'
+        };
+
+
+        const app = Vue.createApp({
+            data() 
+            {
+                return {
+                    inputText: '',
+                    displayText: '',
+                    buttonText: 'You Say',
+                    state: EAppState.INPUT_NAME,
+                    lastUserMsg: '',
+                    chatContext: new ChatContext(),
+                    timeoutCoundown: 30,
+                }
+            },
+            mounted () 
+            {
+                var bIsIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (bIsIOS) 
+                {
+                    document.getElementById('display-container').style.height = "calc(100vh - 440px)";
+                    document.getElementById('input-text').style.fontSize = "48px";
+                }
+
+                this.buttonText = this.state;
+            },
+            methods: 
+            {
+                IsWeixinBrowser() 
+                {
+                    var ua = navigator.userAgent.toLowerCase();
+                    return ua.indexOf('micromessenger') !== -1;
+                },
+
+                OnBtnInputName()
+                {
+                    var text = this.inputText;
+                    text = text.trim();
+                    if(text == '') return;
+                    this.chatContext.username = text;
+                    this.inputText = '';
+                    this.state = EAppState.YOU_SAY;
+                    this.buttonText = this.state;
+                    this.AppendBotMessage('Welcome, ' + this.chatContext.username)
+                },
+
+                async OnBtnYouSay() 
+                {
+                    if(this.state == EAppState.INPUT_NAME)
+                    {
+                        this.OnBtnInputName();
+                        return;
+                    }
+                    
+                    if(this.state == EAppState.WAITING_GPT) 
+                    {
+                        if (this.buttonText.length < 25)
+                        {
+                            this.buttonText += '.';
+                        }
+                        else
+                        {
+                            this.buttonText = 'GPT Maybe Very Busy, Please Wait ...';
+                        }
+                        return;
+                    }
+
+                    var usermsg = this.inputText;
+                    usermsg = usermsg.trim();
+                    if(usermsg == '') return;
+                    this.lastUserMsg = this.inputText;
+                    this.inputText = '';
+
+                    this.state = EAppState.WAITING_GPT;
+                    this.buttonText = this.state;
+                    
+                    
+                    this.timeoutCoundown = this.chatContext.timeout;
+                    clearInterval(this.timerCountdown);
+                    this.timerCountdown = setInterval(() => 
+                    {
+                        this.timeoutCoundown --;
+                        this.buttonText = this.state + "("+this.timeoutCoundown+")";
+                        if(this.timeoutCoundown <= 0)
+                        {
+                            clearInterval(this.timerCountdown);
+                        }
+                    }, 1000);
+
+
+                    this.AppendUserMessage(usermsg);
+                    var rspmsg = await this.ChatBot(usermsg);
+                    this.AppendBotMessage(rspmsg);
+
+                    if(rspmsg.startsWith('[BotError]'))
+                    {
+                        this.inputText = this.lastUserMsg;
+                    }
+                    this.state = EAppState.YOU_SAY;
+                    this.buttonText = this.state;
+                    clearInterval(this.timerCountdown);
+                },
+
+                AppendUserMessage(usermsg)
+                {
+                    var username = this.chatContext.username;
+                    this.displayText += '<hr>';
+                    this.displayText += '<p>' +  username + '-Say: ' + usermsg.replaceAll("\n", "<br>") + '</p>';
+
+                    this.timerAutoScroll = setTimeout(() => 
+                    {
+                        const container = this.$refs.scrollContainer;
+                        container.scrollTop = container.scrollHeight;   
+                    }, 100);
+                },
+
+                AppendBotMessage(rspmsg)
+                {
+                    if(rspmsg == null) rspmsg = '';
+
+                    this.displayText += '<p>GPT-Say: ' + rspmsg.replaceAll("\n", "<br>") + '</p>';
+
+                    this.timerAutoScroll = setTimeout(() => 
+                    {
+                        const container = this.$refs.scrollContainer;
+                        container.scrollTop = container.scrollHeight;   
+                    }, 100);
+                },
+
+                async FetchWithTimeout(url, timeout) 
+                {
+                    return Promise.race([
+                        fetch(url),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('request timeout')), timeout))
+                    ]);
+                },
+
+                async ChatBot(usermsg)
+                {
+                    webapi = this.chatContext.webapi;
+                    key = this.chatContext.session;
+                    usr = this.chatContext.username;
+                    msg = encodeURIComponent(usermsg);
+                    key = encodeURIComponent(key);
+                    usr = encodeURIComponent(usr);
+
+                    url = webapi + '?key=' + key + '&usr=' + usr + '&msg=' + msg;
+                    //this.displayText += url;
+                    try 
+                    {
+                        const rsp = await fetch(url);
+                        //const rsp = await this.FetchWithTimeout(url, this.chatContext.timeout * 1000);
+                        const rspdata = await rsp.json();
+                        rspmsg = new BotMessage(rspdata);
+                        this.chatContext.session = rspmsg.key;
+                        //this.displayText += JSON.stringify(data);
+                        return rspmsg.content;
+                    } 
+                    catch (error) 
+                    {
+                        console.error(error);
+                        return "[BotError]" + error;
+                    }
+                }
+
+            }
+        });
+        app.mount('#app');
+    </script>
+</body>
+</html>

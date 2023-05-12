@@ -261,6 +261,12 @@ def ReadText(fileName):
     f.close()
     return text
 
+def ReadTextUtf8Sig(fileName):
+    f = open(fileName, 'r',encoding="utf-8-sig")
+    text = f.read()
+    f.close()
+    return text    
+
 ########################################################################
 def AppendText(filepath:str, text:str):
     f = open(filepath, 'a',encoding="utf-8")

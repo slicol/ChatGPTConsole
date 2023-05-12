@@ -12,9 +12,9 @@ import Misc.MTStringUtils as MTStringUtils
 from Misc.MTConfigIni import GMTConfig
 from urllib3.exceptions import InsecureRequestWarning
 
+
 urllib3.disable_warnings(InsecureRequestWarning)
 
-# 记录本地缓存及会话信息
 class ChatContext:
     host = ''
     session = ''
@@ -22,6 +22,8 @@ class ChatContext:
     messages = []
     filepath = ''
     maxcount = 10
+    timeout = 60
+    direct = False
 
     def AddUserMessage(msgstr):
         onemsg = {"role": "user", "content": msgstr}
@@ -57,7 +59,6 @@ class ChatContext:
         return n//2
 
 
-# 用于封装中转服消息
 class BotMessage:
     error = ""
     key = ""
@@ -94,7 +95,7 @@ class BotMessage:
 
 
 
-# 与OpenAI直接交互
+# Define function to generate response using ChatGPT API
 def ChatAPI(usermsg)->str:
     ChatContext.AddUserMessage(usermsg)
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ChatContext.messages)
@@ -103,7 +104,7 @@ def ChatAPI(usermsg)->str:
     ChatContext.LoopMessage()
     return rspmsg.content
 
-# 与中转服交互
+
 def ChatBot(usermsg)->str:
     ChatContext.AddUserMessage(usermsg)
     host = ChatContext.host
@@ -133,8 +134,7 @@ def ChatBot(usermsg)->str:
     return rspmsg.content
 
 
-# main
-if __name__ == '__main__':
+def init():
     cmdpath = sys.argv[0]
     basedir = os.path.dirname(cmdpath)
     if basedir == '':
@@ -147,19 +147,21 @@ if __name__ == '__main__':
     MTFileUtils.MakeSureParentDir(ChatContext.filepath)
 
     GMTConfig.Load(basedir + "/ChatGPTConsole.ini")
-
-    # host
     ChatContext.host = GMTConfig.GetItemValue("Default","host")
-    if ChatContext.host == '': ChatContext.host = 'https://127.0.0.1:4540'
+    if ChatContext.host == '': ChatContext.host = 'https://127.0.0.1:443'
     
-    # direct
-    direct = GMTConfig.GetItemValue("Default","direct") == '1'
+    ChatContext.direct = GMTConfig.GetItemValue("Default","direct") == '1'
 
     # api_key
     openai.api_key = GMTConfig.GetItemValue("Default", "api_key")
     if openai.api_key == '':
         print('api_key is empty')
     pass
+
+
+
+if __name__ == '__main__':
+    init()
 
     while(ChatContext.username == None or ChatContext.username == ''):
         print("===================================================================")
@@ -172,7 +174,7 @@ if __name__ == '__main__':
         print("===================================================================")
         usermsg = input("YouSay[" + ChatContext.username + "]：")
         print("-------------------------------------------------------------------")
-        if direct:
+        if ChatContext.direct:
             rspmsg = ChatAPI(usermsg)
         else:
             rspmsg = ChatBot(usermsg)

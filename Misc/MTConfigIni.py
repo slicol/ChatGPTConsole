@@ -2,6 +2,7 @@
 # Ini配置的读写封装
 #@Slicol
 
+import logging
 import os
 
 ########################################################################
@@ -82,11 +83,11 @@ class MTConfigIni:
         pos = line.find(';')
         if pos < 0 : return line
         if pos == 0: return "" 
-        return line[0:pos-1]
+        return line[0:pos]
 
     def Load(self, path:str):
         if not os.path.exists(path):
-            print("MTConfigIni.Load() File Don't Exist:", path)
+            logging.info("MTConfigIni.Load() File Don't Exist: %s", path)
             return
         pass
 
@@ -161,6 +162,17 @@ class MTConfigIni:
             return secobj.GetItemValue(key)
         pass
         return ""
+
+    def GetItemValueInt(self, section:str, key:str)->int:
+        result = self.GetItemValue(section, key)
+        if result == "": return 0
+        try:
+            result = int(result)
+        except Exception as e:
+            result = 0
+        pass
+        return result
+            
 
 
 ########################################################################    

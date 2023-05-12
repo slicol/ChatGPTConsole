@@ -90,8 +90,3 @@ def Base64StringDecode(base64str:str)->str:
     return base64.b64decode(base64str.encode("utf-8")).decode("utf-8")
 
 
-########################################################################
-if __name__ == '__main__':
-    print(sys.argv)
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-    selfdir = os.path.dirname(os.path.abspath(__file__))
